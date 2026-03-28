@@ -1,12 +1,18 @@
-import { useRef, useState } from 'react';
-import type { AppSettings, SettingsSectionKey } from '../types';
+import { useEffect, useState } from 'react';
+import { getGithubBackupLocation } from '../lib/githubBackup';
+import type { AppSettings, GithubBackupEntry, SettingsSectionKey } from '../types';
 
 interface SettingsPageProps {
   settings: AppSettings;
   onChangeSection: (section: SettingsSectionKey, values: string[]) => void;
   onUpdateGeneral: (values: { companyName: string; ownerName: string }) => void;
-  onExportBackup: () => void;
-  onImportBackup: (file: File) => Promise<string>;
+  githubToken: string;
+  githubBackups: GithubBackupEntry[];
+  isGithubBackupBusy: boolean;
+  onGithubTokenChange: (token: string) => void;
+  onExportBackup: () => Promise<string>;
+  onImportBackup: (backup: GithubBackupEntry) => Promise<string>;
+  onRefreshGithubBackups: () => Promise<void>;
 }
 
 const sections: Array<{ key: SettingsSectionKey; title: string; description: string }> = [
@@ -31,11 +37,27 @@ export function SettingsPage({
   settings,
   onChangeSection,
   onUpdateGeneral,
+  githubToken,
+  githubBackups,
+  isGithubBackupBusy,
+  onGithubTokenChange,
   onExportBackup,
-  onImportBackup
+  onImportBackup,
+  onRefreshGithubBackups
 }: SettingsPageProps) {
-  const backupInputRef = useRef<HTMLInputElement>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [selectedBackupPath, setSelectedBackupPath] = useState('');
+
+  useEffect(() => {
+    if (githubBackups.length === 0) {
+      setSelectedBackupPath('');
+      return;
+    }
+
+    if (!githubBackups.some((backup) => backup.path === selectedBackupPath)) {
+      setSelectedBackupPath(githubBackups[0].path);
+    }
+  }, [githubBackups, selectedBackupPath]);
 
   function updateValue(section: SettingsSectionKey, index: number, value: string) {
     const updated = [...settings[section]];
@@ -53,33 +75,50 @@ export function SettingsPage({
     onChangeSection(section, updated.length > 0 ? updated : ['']);
   }
 
-  function handleExportBackup() {
-    onExportBackup();
-    setFeedback({ type: 'success', message: 'Backup scaricato. Conserva il file in un posto sicuro.' });
-  }
-
-  async function handleImportBackup(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    if (!window.confirm('Caricare il backup sostituira tutti i dati attuali dell\'app. Continuare?')) {
-      event.target.value = '';
-      return;
-    }
-
+  async function handleExportBackup() {
     try {
-      const message = await onImportBackup(file);
+      const message = await onExportBackup();
       setFeedback({ type: 'success', message });
     } catch (error) {
       setFeedback({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Impossibile caricare il backup selezionato.'
+        message: error instanceof Error ? error.message : 'Impossibile salvare il backup su GitHub.'
       });
-    } finally {
-      event.target.value = '';
+    }
+  }
+
+  async function handleImportBackup() {
+    const selectedBackup = githubBackups.find((backup) => backup.path === selectedBackupPath);
+
+    if (!selectedBackup) {
+      setFeedback({ type: 'error', message: 'Seleziona un backup GitHub da caricare.' });
+      return;
+    }
+
+    if (!window.confirm('Caricare il backup sostituira tutti i dati attuali dell\'app. Continuare?')) {
+      return;
+    }
+
+    try {
+      const message = await onImportBackup(selectedBackup);
+      setFeedback({ type: 'success', message });
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Impossibile caricare il backup GitHub selezionato.'
+      });
+    }
+  }
+
+  async function handleRefreshGithubBackups() {
+    try {
+      await onRefreshGithubBackups();
+      setFeedback({ type: 'success', message: 'Elenco backup GitHub aggiornato.' });
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Impossibile aggiornare l\'elenco backup GitHub.'
+      });
     }
   }
 
@@ -113,24 +152,59 @@ export function SettingsPage({
               }
             />
           </label>
+          <label>
+            <span>Token GitHub</span>
+            <input
+              type="password"
+              value={githubToken}
+              placeholder="github_pat_..."
+              autoComplete="off"
+              onChange={(event) => onGithubTokenChange(event.target.value)}
+            />
+          </label>
+          <p className="settings-copy">
+            Backup GitHub: {getGithubBackupLocation()}. Il token resta solo nel browser corrente e deve avere permesso
+            Contents: Read and write sul repository.
+          </p>
+          <label>
+            <span>Backup disponibili</span>
+            <select value={selectedBackupPath} onChange={(event) => setSelectedBackupPath(event.target.value)}>
+              {githubBackups.length === 0 ? (
+                <option value="">Nessun backup trovato nella cartella GitHub</option>
+              ) : (
+                githubBackups.map((backup) => (
+                  <option key={backup.path} value={backup.path}>
+                    {backup.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
           <div className="backup-actions">
-            <button type="button" className="secondary-button backup-button" onClick={handleExportBackup}>
+            <button
+              type="button"
+              className="secondary-button backup-button"
+              onClick={() => void handleExportBackup()}
+              disabled={isGithubBackupBusy}
+            >
               Backup
             </button>
             <button
               type="button"
               className="secondary-button backup-button"
-              onClick={() => backupInputRef.current?.click()}
+              onClick={() => void handleImportBackup()}
+              disabled={isGithubBackupBusy || !selectedBackupPath}
             >
               Carica backup
             </button>
-            <input
-              ref={backupInputRef}
-              type="file"
-              accept="application/json,.json"
-              className="visually-hidden"
-              onChange={handleImportBackup}
-            />
+            <button
+              type="button"
+              className="secondary-button backup-button"
+              onClick={() => void handleRefreshGithubBackups()}
+              disabled={isGithubBackupBusy}
+            >
+              Aggiorna elenco
+            </button>
           </div>
           {feedback ? <p className={`settings-feedback settings-feedback-${feedback.type}`}>{feedback.message}</p> : null}
         </div>

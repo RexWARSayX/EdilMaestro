@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import {
+  downloadGithubBackup,
+  listGithubBackups,
+  loadGithubBackupToken,
+  saveGithubBackupToken,
+  uploadGithubBackup
+} from './lib/githubBackup';
 import { createBackupFileContent, loadAppData, parseBackupFileContent, saveAppData } from './lib/storage';
 import { CantieriPage } from './pages/CantieriPage';
 import { CostiPage } from './pages/CostiPage';
@@ -8,7 +15,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { LavorazioniPage } from './pages/LavorazioniPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ReportPage } from './pages/ReportPage';
-import type { AppData, Lavorazione, Project, Registrazione, SettingsSectionKey } from './types';
+import type { AppData, GithubBackupEntry, Lavorazione, Project, Registrazione, SettingsSectionKey } from './types';
 
 function createSlug(value: string): string {
   return value
@@ -24,17 +31,25 @@ function createId(prefix: string, value: string): string {
   return `${prefix}-${createSlug(value)}-${Date.now()}`;
 }
 
-function createBackupFileName(): string {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  return `edilmaestro-backup-${timestamp}.json`;
-}
-
 export default function App() {
   const [data, setData] = useState<AppData>(() => loadAppData());
+  const [githubToken, setGithubToken] = useState(() => loadGithubBackupToken());
+  const [githubBackups, setGithubBackups] = useState<GithubBackupEntry[]>([]);
+  const [isGithubBackupBusy, setIsGithubBackupBusy] = useState(false);
 
   useEffect(() => {
     saveAppData(data);
   }, [data]);
+
+  useEffect(() => {
+    saveGithubBackupToken(githubToken);
+  }, [githubToken]);
+
+  useEffect(() => {
+    void refreshGithubBackups().catch(() => {
+      setGithubBackups([]);
+    });
+  }, [githubToken]);
 
   const today = new Date().toISOString().slice(0, 10);
   const costsByWorkType: Record<string, number> = Object.fromEntries(
@@ -119,23 +134,34 @@ export default function App() {
     }));
   }
 
-  function exportBackup() {
-    const backupBlob = new Blob([createBackupFileContent(data)], { type: 'application/json' });
-    const backupUrl = window.URL.createObjectURL(backupBlob);
-    const downloadLink = document.createElement('a');
-
-    downloadLink.href = backupUrl;
-    downloadLink.download = createBackupFileName();
-    document.body.append(downloadLink);
-    downloadLink.click();
-    downloadLink.remove();
-    window.URL.revokeObjectURL(backupUrl);
+  async function refreshGithubBackups() {
+    const backups = await listGithubBackups(githubToken);
+    setGithubBackups(backups);
   }
 
-  async function importBackup(file: File): Promise<string> {
-    const importedData = parseBackupFileContent(await file.text());
-    setData(importedData);
-    return 'Backup caricato correttamente.';
+  async function exportBackup(): Promise<string> {
+    setIsGithubBackupBusy(true);
+
+    try {
+      const backupContent = createBackupFileContent(data);
+      const uploadedBackup = await uploadGithubBackup(backupContent, githubToken);
+      await refreshGithubBackups();
+      return `Backup salvato su GitHub come ${uploadedBackup.fileName}.`;
+    } finally {
+      setIsGithubBackupBusy(false);
+    }
+  }
+
+  async function importBackup(backup: GithubBackupEntry): Promise<string> {
+    setIsGithubBackupBusy(true);
+
+    try {
+      const importedData = parseBackupFileContent(await downloadGithubBackup(backup, githubToken));
+      setData(importedData);
+      return `Backup GitHub ${backup.name} caricato correttamente.`;
+    } finally {
+      setIsGithubBackupBusy(false);
+    }
   }
 
   return (
@@ -240,10 +266,15 @@ export default function App() {
           element={
             <SettingsPage
               settings={data.settings}
+              githubToken={githubToken}
+              githubBackups={githubBackups}
+              isGithubBackupBusy={isGithubBackupBusy}
               onChangeSection={updateSettingsSection}
               onUpdateGeneral={updateGeneralSettings}
+              onGithubTokenChange={setGithubToken}
               onExportBackup={exportBackup}
               onImportBackup={importBackup}
+              onRefreshGithubBackups={refreshGithubBackups}
             />
           }
         />

@@ -65,6 +65,12 @@ export interface DashboardStats {
   costsByWorkType: Record<string, number>;
 }
 
+export interface GithubBackupEntry {
+  name: string;
+  path: string;
+  downloadUrl: string;
+}
+
 export type SettingsSectionKey =
   | 'personnelOptions'
   | 'lavorazioniOptions'
