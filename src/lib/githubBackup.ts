@@ -11,6 +11,8 @@ interface GithubContentItem {
   name: string;
   path: string;
   sha?: string;
+  content?: string;
+  encoding?: string;
   download_url?: string | null;
 }
 
@@ -45,6 +47,13 @@ function encodeBase64(value: string): string {
   });
 
   return btoa(binary);
+}
+
+function decodeBase64(value: string): string {
+  const normalizedValue = value.replace(/\s/g, '');
+  const binary = atob(normalizedValue);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
 }
 
 async function readGithubError(response: Response): Promise<string> {
@@ -150,16 +159,25 @@ export async function listGithubBackups(token?: string): Promise<GithubBackupEnt
 }
 
 export async function downloadGithubBackup(backup: GithubBackupEntry, token?: string): Promise<string> {
-  const response = await fetch(backup.downloadUrl, {
-    headers: token?.trim() ? { Authorization: `Bearer ${token.trim()}` } : undefined,
+  const response = await fetch(createApiUrl(`contents/${backup.path}?ref=${GITHUB_BRANCH}`), {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      ...(token?.trim() ? { Authorization: `Bearer ${token.trim()}` } : {})
+    },
     cache: 'no-store'
   });
 
   if (!response.ok) {
-    throw new Error(`Impossibile scaricare ${backup.name} da GitHub.`);
+    throw new Error(`Impossibile scaricare ${backup.name} da GitHub: ${await readGithubError(response)}`);
   }
 
-  return response.text();
+  const payload = (await response.json()) as GithubContentItem;
+
+  if (payload.encoding !== 'base64' || typeof payload.content !== 'string') {
+    throw new Error(`Il file ${backup.name} non e stato restituito in un formato leggibile da GitHub.`);
+  }
+
+  return decodeBase64(payload.content);
 }
 
 export async function uploadGithubBackup(content: string, token: string): Promise<{ fileName: string }> {
