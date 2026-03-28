@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">EdilMaestro</string>
+    <string name="title_activity_main">EdilMaestro</string>
+    <string name="package_name">com.edilmaestro.app</string>
+    <string name="custom_url_scheme">com.edilmaestro.app</string>
+</resources>

@@ -1,0 +1,175 @@
+import { useRef, useState } from 'react';
+import type { AppSettings, SettingsSectionKey } from '../types';
+
+interface SettingsPageProps {
+  settings: AppSettings;
+  onChangeSection: (section: SettingsSectionKey, values: string[]) => void;
+  onUpdateGeneral: (values: { companyName: string; ownerName: string }) => void;
+  onExportBackup: () => void;
+  onImportBackup: (file: File) => Promise<string>;
+}
+
+const sections: Array<{ key: SettingsSectionKey; title: string; description: string }> = [
+  {
+    key: 'personnelOptions',
+    title: 'Personale',
+    description: 'Nomi selezionabili nelle registrazioni operai.'
+  },
+  {
+    key: 'lavorazioniOptions',
+    title: 'Lavorazioni',
+    description: 'Valori selezionabili nel campo Lavorazione della pagina registrazioni.'
+  },
+  {
+    key: 'costTypeOptions',
+    title: 'Tipologia di costo',
+    description: 'Tipologie disponibili nella pagina registrazioni.'
+  }
+];
+
+export function SettingsPage({
+  settings,
+  onChangeSection,
+  onUpdateGeneral,
+  onExportBackup,
+  onImportBackup
+}: SettingsPageProps) {
+  const backupInputRef = useRef<HTMLInputElement>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  function updateValue(section: SettingsSectionKey, index: number, value: string) {
+    const updated = [...settings[section]];
+    updated[index] = value;
+    onChangeSection(section, updated);
+  }
+
+  function addValue(section: SettingsSectionKey) {
+    onChangeSection(section, [...settings[section], '']);
+  }
+
+  function removeValue(section: SettingsSectionKey, index: number) {
+    const currentValues = settings[section];
+    const updated = currentValues.filter((_, itemIndex) => itemIndex !== index);
+    onChangeSection(section, updated.length > 0 ? updated : ['']);
+  }
+
+  function handleExportBackup() {
+    onExportBackup();
+    setFeedback({ type: 'success', message: 'Backup scaricato. Conserva il file in un posto sicuro.' });
+  }
+
+  async function handleImportBackup(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!window.confirm('Caricare il backup sostituira tutti i dati attuali dell\'app. Continuare?')) {
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      const message = await onImportBackup(file);
+      setFeedback({ type: 'success', message });
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Impossibile caricare il backup selezionato.'
+      });
+    } finally {
+      event.target.value = '';
+    }
+  }
+
+  return (
+    <div className="page-grid settings-grid">
+      <section className="panel settings-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Impostazioni</p>
+            <h2>Generale</h2>
+            <p className="settings-copy">Dati aziendali riportati in dashboard e report.</p>
+          </div>
+        </div>
+
+        <div className="settings-list">
+          <label>
+            <span>Nome azienda</span>
+            <input
+              value={settings.companyName}
+              onChange={(event) =>
+                onUpdateGeneral({ companyName: event.target.value, ownerName: settings.ownerName })
+              }
+            />
+          </label>
+          <label>
+            <span>Nome titolare</span>
+            <input
+              value={settings.ownerName}
+              onChange={(event) =>
+                onUpdateGeneral({ companyName: settings.companyName, ownerName: event.target.value })
+              }
+            />
+          </label>
+          <div className="backup-actions">
+            <button type="button" className="secondary-button backup-button" onClick={handleExportBackup}>
+              Backup
+            </button>
+            <button
+              type="button"
+              className="secondary-button backup-button"
+              onClick={() => backupInputRef.current?.click()}
+            >
+              Carica backup
+            </button>
+            <input
+              ref={backupInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="visually-hidden"
+              onChange={handleImportBackup}
+            />
+          </div>
+          {feedback ? <p className={`settings-feedback settings-feedback-${feedback.type}`}>{feedback.message}</p> : null}
+        </div>
+      </section>
+
+      {sections.map((section) => (
+        <section className="panel settings-panel" key={section.key}>
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Impostazioni</p>
+              <h2>{section.title}</h2>
+              <p className="settings-copy">{section.description}</p>
+            </div>
+          </div>
+
+          <div className="settings-list">
+            {settings[section.key].map((value, index) => (
+              <div className="settings-row" key={`${section.key}-${index}`}>
+                <input
+                  value={value}
+                  placeholder="Nuovo valore"
+                  onChange={(event) => updateValue(section.key, index, event.target.value)}
+                />
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => removeValue(section.key, index)}
+                >
+                  Elimina
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button type="button" className="primary-button add-setting-button" onClick={() => addValue(section.key)}>
+            +
+          </button>
+        </section>
+      ))}
+    </div>
+  );
+}
