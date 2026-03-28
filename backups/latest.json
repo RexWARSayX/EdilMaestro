@@ -1,0 +1,169 @@
+{
+  "app": "EdilMaestro",
+  "version": 1,
+  "exportedAt": "2026-03-28T10:21:17.559Z",
+  "data": {
+    "settings": {
+      "appTitle": "Gestione Cantieri Pro",
+      "companyName": "La Tua Azienda S.r.l.",
+      "ownerName": "Mario Rossi",
+      "personnelOptions": [
+        "Matteo",
+        "Simone",
+        "Massimo",
+        "Alfredo",
+        "Filippo",
+        "Altro"
+      ],
+      "lavorazioniOptions": [
+        "economia",
+        "misura",
+        "corpo"
+      ],
+      "costTypeOptions": [
+        "operai",
+        "materiali",
+        "mezzi",
+        "attrezzature",
+        "subappalti",
+        "spese_varie"
+      ]
+    },
+    "projects": [
+      {
+        "id": "cantiere-via-roma",
+        "name": "Cantiere Via Roma",
+        "address": "Via Roma 15, Milano",
+        "client": "Mario Rossi",
+        "manager": "Giuseppe Verdi",
+        "status": "attivo",
+        "startDate": "2026-03-01",
+        "endDate": ""
+      },
+      {
+        "id": "palazzina-aurora",
+        "name": "Palazzina Aurora",
+        "address": "Via Lamarmora 8, Brescia",
+        "client": "Aurora Immobiliare",
+        "manager": "Luca Ricci",
+        "status": "sospeso",
+        "startDate": "2026-02-12",
+        "endDate": ""
+      },
+      {
+        "id": "magazzino-est",
+        "name": "Magazzino Est",
+        "address": "Zona Industriale 4, Piacenza",
+        "client": "LogiTrans Srl",
+        "manager": "Paolo Ferri",
+        "status": "completato",
+        "startDate": "2026-01-08",
+        "endDate": "2026-03-15"
+      }
+    ],
+    "lavorazioni": [
+      {
+        "id": "lav-demolizione",
+        "cantiereId": "cantiere-via-roma",
+        "description": "Demolizione muri interni",
+        "workType": "economia",
+        "quantity": 18,
+        "unit": "MQ",
+        "amount": 4200,
+        "createdAt": "2026-03-02T10:00:00.000Z"
+      },
+      {
+        "id": "lav-impianto",
+        "cantiereId": "cantiere-via-roma",
+        "description": "Nuovo impianto elettrico piano terra",
+        "workType": "misura",
+        "quantity": 145,
+        "unit": "ML",
+        "amount": 9800,
+        "createdAt": "2026-03-03T11:20:00.000Z"
+      },
+      {
+        "id": "lav-ponteggio",
+        "cantiereId": "palazzina-aurora",
+        "description": "Montaggio ponteggio frontale",
+        "workType": "corpo",
+        "quantity": 1,
+        "unit": "A CORPO",
+        "amount": 6200,
+        "createdAt": "2026-02-15T07:15:00.000Z"
+      },
+      {
+        "id": "lav-segnaletica",
+        "cantiereId": "magazzino-est",
+        "description": "Segnaletica finale antincendio",
+        "workType": "misura",
+        "quantity": 42,
+        "unit": "PZ",
+        "amount": 1850,
+        "createdAt": "2026-01-21T13:00:00.000Z"
+      }
+    ],
+    "registrazioni": [
+      {
+        "id": "reg-operai-roma",
+        "date": "2026-03-22",
+        "cantiereId": "cantiere-via-roma",
+        "lavorazioneId": "lav-demolizione",
+        "costType": "operai",
+        "workerName": "Matteo",
+        "costDescription": "Squadra demolizione interna",
+        "costUnit": "",
+        "costQuantity": 8,
+        "costUnitPrice": 28,
+        "costAmount": 224,
+        "notes": "Primo piano completato",
+        "createdAt": "2026-03-22T18:00:00.000Z"
+      },
+      {
+        "id": "reg-materiali-roma",
+        "date": "2026-03-22",
+        "cantiereId": "cantiere-via-roma",
+        "lavorazioneId": "lav-impianto",
+        "costType": "materiali",
+        "workerName": "",
+        "costDescription": "Corrugati e cassette di derivazione",
+        "costUnit": "ML",
+        "costQuantity": 145,
+        "costUnitPrice": 4.6,
+        "costAmount": 667,
+        "notes": "",
+        "createdAt": "2026-03-22T18:20:00.000Z"
+      },
+      {
+        "id": "reg-mezzi-aurora",
+        "date": "2026-03-18",
+        "cantiereId": "palazzina-aurora",
+        "lavorazioneId": "lav-ponteggio",
+        "costType": "mezzi",
+        "workerName": "",
+        "costDescription": "Autocarro con gru",
+        "costUnit": "GIORNO",
+        "costQuantity": 2,
+        "costUnitPrice": 360,
+        "costAmount": 720,
+        "notes": "Fermato per vento forte",
+        "createdAt": "2026-03-18T17:00:00.000Z"
+      },
+      {
+        "id": "reg-subappalto-est",
+        "date": "2026-03-11",
+        "cantiereId": "magazzino-est",
+        "lavorazioneId": "lav-segnaletica",
+        "costType": "subappalti",
+        "workerName": "",
+        "costDescription": "Posa segnaletica certificata",
+        "costUnit": "A CORPO",
+        "costQuantity": 1,
+        "costUnitPrice": 980,
+        "costAmount": 980,
+        "notes": "Intervento conclusivo",
+        "createdAt": "2026-03-11T12:30:00.000Z"
+      }
+    ]
+  }
+}
